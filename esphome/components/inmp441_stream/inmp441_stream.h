@@ -1,10 +1,13 @@
 #pragma once
 
+#ifdef USE_ESP32_FRAMEWORK_ARDUINO
+
 #include "esphome/core/component.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/switch/switch.h"
 
 #include <AudioTools.h>
+
 
 // #include "StateMachine.hpp"
 
@@ -54,3 +57,5 @@ class Inmp441StreamComponent : public Component {
 
 }  // namespace inmp441_stream
 }  // namespace esphome
+
+#endif  // USE_ESP32_FRAMEWORK_ARDUINO
