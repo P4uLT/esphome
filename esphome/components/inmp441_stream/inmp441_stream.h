@@ -8,9 +8,6 @@
 
 #include <AudioTools.h>
 
-
-// #include "StateMachine.hpp"
-
 namespace esphome {
 namespace inmp441_stream {
 
