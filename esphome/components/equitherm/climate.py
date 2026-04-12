@@ -226,7 +226,7 @@ async def to_code(config):
         cg.add(var.set_ki_multiplier(params[CONF_KI_MULTIPLIER]))
         cg.add(var.set_kd_multiplier(params[CONF_KD_MULTIPLIER]))
 
-    # Automation triggers (callback pattern)
+    # Automation triggers (callback-based, supports multiple entries)
     for conf in config.get(CONF_ON_HEATING_START, []):
         await automation.build_callback_automation(
             var, "add_on_heating_start_callback", [], conf

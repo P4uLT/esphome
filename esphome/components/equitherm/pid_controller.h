@@ -1,12 +1,14 @@
 #pragma once
+
 #include "esphome/core/hal.h"
-#include <deque>
+#include "esphome/core/helpers.h"
 #include <cmath>
 
 namespace esphome {
 namespace equitherm {
 
 /// Embedded PID controller — avoids dependency on pid component.
+/// Kept in sync with esphome/components/pid/pid_controller.
 struct PIDController {
   float update(float setpoint, float process_value);
 
@@ -25,10 +27,10 @@ struct PIDController {
   /// Differential gain K_d.
   float kd_ = 0;
 
-  // smooth the derivative value using a weighted average over X samples
-  int derivative_samples_ = 8;
+  // smooth the derivative value using an average over X samples
+  int derivative_samples_ = 1;
 
-  /// smooth the output value using a weighted average over X values
+  /// smooth the output value using an average over X values
   int output_samples_ = 1;
 
   float threshold_low_ = 0.0f;
@@ -51,7 +53,10 @@ struct PIDController {
   void calculate_proportional_term_();
   void calculate_integral_term_();
   void calculate_derivative_term_(float setpoint);
-  float weighted_average_(std::deque<float> &list, float new_value, int samples);
+
+  /// Ring buffer smoothing using FixedRingBuffer (single allocation at setup)
+  float ring_buffer_average_(FixedRingBuffer<float> &buf, float new_value, int max_samples);
+
   float calculate_relative_time_();
 
   /// Error from previous update used for derivative term
@@ -61,11 +66,11 @@ struct PIDController {
   float accumulated_integral_ = 0;
   uint32_t last_time_ = 0;
 
-  // this is a list of derivative values for smoothing.
-  std::deque<float> derivative_list_;
+  // Ring buffer for derivative smoothing
+  FixedRingBuffer<float> derivative_window_;
 
-  // this is a list of output values for smoothing.
-  std::deque<float> output_list_;
+  // Ring buffer for output smoothing (shared between normal and deadband modes)
+  FixedRingBuffer<float> output_window_;
 };
 
 }  // namespace equitherm

@@ -66,7 +66,11 @@ class EquithermClimate : public climate::Climate, public Component {
   void set_kd(float kd) { pid_controller_.kd_ = kd; }
   void set_min_integral(float min_integral) { pid_controller_.min_integral_ = min_integral; }
   void set_max_integral(float max_integral) { pid_controller_.max_integral_ = max_integral; }
-  void set_derivative_samples(int samples) { pid_controller_.derivative_samples_ = samples; }
+  void set_derivative_samples(int samples) {
+    pid_controller_.derivative_samples_ = samples;
+    if (samples > 1)  // No allocation needed when samples=1 (ring_buffer_average_ short-circuits)
+      pid_controller_.derivative_window_.init(samples);
+  }
 
   // Deadband parameters
   void set_threshold_low(float threshold) { pid_controller_.threshold_low_ = threshold; }
