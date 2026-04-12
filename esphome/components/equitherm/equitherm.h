@@ -116,9 +116,13 @@ class EquithermClimate : public climate::Climate, public Component {
   // Callback for diagnostic sensors
   void add_on_state_callback(std::function<void()> &&callback) { state_callback_.add(std::move(callback)); }
 
-  // Triggers for heating state transitions
-  Trigger<> *get_on_heating_start_trigger() { return &this->heating_start_trigger_; }
-  Trigger<> *get_on_heating_stop_trigger() { return &this->heating_stop_trigger_; }
+  // Callbacks for heating state transitions
+  template<typename F> void add_on_heating_start_callback(F &&callback) {
+    this->on_heating_start_callback_.add(std::forward<F>(callback));
+  }
+  template<typename F> void add_on_heating_stop_callback(F &&callback) {
+    this->on_heating_stop_callback_.add(std::forward<F>(callback));
+  }
 
   // Force immediate recalculation, bypassing rate limiting (used by runtime tuning numbers)
   void force_recalculate(bool update_pid = false) {
@@ -204,10 +208,10 @@ class EquithermClimate : public climate::Climate, public Component {
   CallbackManager<void()> state_callback_;
   /// Previous climate action — used to detect heating start/stop transitions
   climate::ClimateAction prev_action_{climate::CLIMATE_ACTION_OFF};
-  /// Trigger fired when transitioning into CLIMATE_ACTION_HEATING
-  Trigger<> heating_start_trigger_;
-  /// Trigger fired when transitioning out of CLIMATE_ACTION_HEATING
-  Trigger<> heating_stop_trigger_;
+  /// Callback fired when transitioning into CLIMATE_ACTION_HEATING
+  CallbackManager<void()> on_heating_start_callback_;
+  /// Callback fired when transitioning out of CLIMATE_ACTION_HEATING
+  CallbackManager<void()> on_heating_stop_callback_;
 };
 
 template<typename... Ts> class EquithermForceRecalculateAction : public Action<Ts...> {

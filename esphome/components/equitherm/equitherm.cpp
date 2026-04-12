@@ -294,9 +294,9 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
       this->pid_correction_ = 0.0f;
       // Turn off output only on transition - boiler's frost protection handles freeze prevention
       this->write_setpoint_off_();
-      // Fire stop trigger only if we were actually heating
+      // Fire stop callback only if we were actually heating
       if (this->action == climate::CLIMATE_ACTION_HEATING) {
-        this->heating_stop_trigger_.trigger();
+        this->on_heating_stop_callback_.call();
       }
     }
     this->action = climate::CLIMATE_ACTION_OFF;
@@ -315,17 +315,22 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
   }
 
   // --- MANUAL PRESET OR NORMAL EQUITHERM ---
-  bool manual_active = this->has_custom_preset() && strcmp(this->get_custom_preset().c_str(), "Manual") == 0 &&
-                       this->manual_flow_temp_ != nullptr && this->manual_flow_temp_->has_state() &&
-                       !std::isnan(this->manual_flow_temp_->state);
+  bool manual_active = false;
+#ifdef USE_NUMBER
+  manual_active = this->has_custom_preset() && strcmp(this->get_custom_preset().c_str(), "Manual") == 0 &&
+                  this->manual_flow_temp_ != nullptr && this->manual_flow_temp_->has_state() &&
+                  !std::isnan(this->manual_flow_temp_->state);
+#endif
 
   if (manual_active) {
+#ifdef USE_NUMBER
     // Bypass curve and PID: use manual flow temperature directly
     t_flow = this->manual_flow_temp_->state;
     ESP_LOGD(TAG, "Manual preset active: using manual flow temp %.1f°C", t_flow);
     this->heating_curve_output_ = t_flow;
     this->pid_correction_ = 0.0f;
     this->pid_adjusted_output_ = t_flow;
+#endif
   } else {
     // Normal equitherm curve
     t_flow = heating_curve_.compute_flow_temperature(this->target_temperature, t_outdoor);
@@ -410,10 +415,10 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
 
   if (new_action != this->prev_action_) {
     if (new_action == climate::CLIMATE_ACTION_HEATING) {
-      this->heating_start_trigger_.trigger();
+      this->on_heating_start_callback_.call();
     } else if (this->prev_action_ == climate::CLIMATE_ACTION_HEATING) {
       // Transitioned away from heating (to IDLE)
-      this->heating_stop_trigger_.trigger();
+      this->on_heating_stop_callback_.call();
     }
     this->prev_action_ = new_action;
   }

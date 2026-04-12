@@ -154,12 +154,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Required(CONF_CONTROL_PARAMETERS): CONTROL_PARAMETERS_SCHEMA,
             cv.Required(CONF_OUTPUT_PARAMETERS): OUTPUT_PARAMETERS_SCHEMA,
             cv.Optional(CONF_DEADBAND_PARAMETERS): DEADBAND_PARAMETERS_SCHEMA,
-            cv.Optional(CONF_ON_HEATING_START): automation.validate_automation(
-                single=True
-            ),
-            cv.Optional(CONF_ON_HEATING_STOP): automation.validate_automation(
-                single=True
-            ),
+            cv.Optional(CONF_ON_HEATING_START): automation.validate_automation({}),
+            cv.Optional(CONF_ON_HEATING_STOP): automation.validate_automation({}),
         }
     )
     .extend(cv.COMPONENT_SCHEMA),
@@ -230,14 +226,14 @@ async def to_code(config):
         cg.add(var.set_ki_multiplier(params[CONF_KI_MULTIPLIER]))
         cg.add(var.set_kd_multiplier(params[CONF_KD_MULTIPLIER]))
 
-    # Automation triggers
-    if CONF_ON_HEATING_START in config:
-        await automation.build_automation(
-            var.get_on_heating_start_trigger(), [], config[CONF_ON_HEATING_START]
+    # Automation triggers (callback pattern)
+    for conf in config.get(CONF_ON_HEATING_START, []):
+        await automation.build_callback_automation(
+            var, "add_on_heating_start_callback", [], conf
         )
-    if CONF_ON_HEATING_STOP in config:
-        await automation.build_automation(
-            var.get_on_heating_stop_trigger(), [], config[CONF_ON_HEATING_STOP]
+    for conf in config.get(CONF_ON_HEATING_STOP, []):
+        await automation.build_callback_automation(
+            var, "add_on_heating_stop_callback", [], conf
         )
 
 
