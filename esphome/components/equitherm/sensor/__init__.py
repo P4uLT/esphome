@@ -10,6 +10,7 @@ from esphome.const import (
     CONF_UNIT_OF_MEASUREMENT,
     DEVICE_CLASS_DURATION,
     DEVICE_CLASS_TEMPERATURE,
+    ENTITY_CATEGORY_DIAGNOSTIC,
     ENTITY_CATEGORY_NONE,
     ICON_THERMOMETER,
     ICON_TIMER,
@@ -41,6 +42,8 @@ EQUITHERM_SENSOR_TYPES = {
     "PID_INTEGRAL": EquithermSensorType.EQUITHERM_SENSOR_TYPE_PID_INTEGRAL,
     "PID_DERIVATIVE": EquithermSensorType.EQUITHERM_SENSOR_TYPE_PID_DERIVATIVE,
     "FALLBACK_DURATION": EquithermSensorType.EQUITHERM_SENSOR_TYPE_FALLBACK_DURATION,
+    "MIN_FLOW_TEMP": EquithermSensorType.EQUITHERM_SENSOR_TYPE_MIN_FLOW_TEMP,
+    "MAX_FLOW_TEMP": EquithermSensorType.EQUITHERM_SENSOR_TYPE_MAX_FLOW_TEMP,
 }
 
 # =============================================================================
@@ -83,11 +86,24 @@ FALLBACK_DIAGNOSTIC_SENSORS = {
     },
 }
 
+# Diagnostic sensors for output parameters (static, set at compile time)
+OUTPUT_PARAMETER_SENSORS = {
+    "MIN_FLOW_TEMP": {
+        **_temperature_sensor_config(),
+        "entity_category": ENTITY_CATEGORY_DIAGNOSTIC,
+    },
+    "MAX_FLOW_TEMP": {
+        **_temperature_sensor_config(),
+        "entity_category": ENTITY_CATEGORY_DIAGNOSTIC,
+    },
+}
+
 # Combined sensor type configurations
 SENSOR_TYPE_CONFIGS = {
     **FLOW_TEMPERATURE_SENSORS,
     **PID_DIAGNOSTIC_SENSORS,
     **FALLBACK_DIAGNOSTIC_SENSORS,
+    **OUTPUT_PARAMETER_SENSORS,
 }
 
 # =============================================================================
@@ -105,6 +121,9 @@ def _apply_type_defaults(config):
 
     if type_config["device_class"]:
         config.setdefault(CONF_DEVICE_CLASS, type_config["device_class"])
+
+    if "entity_category" in type_config:
+        config["entity_category"] = type_config["entity_category"]
 
     return config
 

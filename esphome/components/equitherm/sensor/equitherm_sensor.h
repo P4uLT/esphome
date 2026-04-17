@@ -18,6 +18,8 @@ enum EquithermSensorType {
   EQUITHERM_SENSOR_TYPE_PID_INTEGRAL,          // PID integral term
   EQUITHERM_SENSOR_TYPE_PID_DERIVATIVE,        // PID derivative term
   EQUITHERM_SENSOR_TYPE_FALLBACK_DURATION,     // Duration in fallback mode (seconds)
+  EQUITHERM_SENSOR_TYPE_MIN_FLOW_TEMP,         // Minimum flow temperature (output parameter)
+  EQUITHERM_SENSOR_TYPE_MAX_FLOW_TEMP,         // Maximum flow temperature (output parameter)
 };
 
 class EquithermSensor : public sensor::Sensor, public Component {

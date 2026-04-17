@@ -43,6 +43,12 @@ void EquithermSensor::update_from_parent_() {
     case EQUITHERM_SENSOR_TYPE_FALLBACK_DURATION:
       value = this->parent_->get_fallback_duration();
       break;
+    case EQUITHERM_SENSOR_TYPE_MIN_FLOW_TEMP:
+      value = this->parent_->get_min_flow_temp();
+      break;
+    case EQUITHERM_SENSOR_TYPE_MAX_FLOW_TEMP:
+      value = this->parent_->get_max_flow_temp();
+      break;
     default:
       ESP_LOGW(TAG, "Unknown sensor type: %d", static_cast<int>(this->type_));
       value = NAN;
