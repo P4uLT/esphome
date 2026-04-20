@@ -29,7 +29,6 @@ CONF_RATE_LIMIT_RISING = "rate_limit_rising"
 CONF_RATE_LIMIT_FALLING = "rate_limit_falling"
 
 # Output behavior parameters
-CONF_ACTION_HYSTERESIS = "action_hysteresis"
 CONF_WRITE_DEADBAND = "write_deadband"
 
 # PID parameters
@@ -104,7 +103,6 @@ OUTPUT_PARAMETERS_SCHEMA = cv.All(
             cv.Optional(CONF_RATE_LIMIT_FALLING, default=1): cv.float_range(
                 min=0.0, max=2.0
             ),
-            cv.Optional(CONF_ACTION_HYSTERESIS, default="0.1°C"): cv.temperature_delta,
             cv.Optional(CONF_WRITE_DEADBAND, default="0.05°C"): cv.temperature_delta,
         }
     ),
@@ -214,7 +212,6 @@ async def to_code(config):
     cg.add(var.set_max_flow_temp(params[CONF_MAX_FLOW_TEMP]))
     cg.add(var.set_rate_limit_rising(params[CONF_RATE_LIMIT_RISING]))
     cg.add(var.set_rate_limit_falling(params[CONF_RATE_LIMIT_FALLING]))
-    cg.add(var.set_action_hysteresis(params[CONF_ACTION_HYSTERESIS]))
     cg.add(var.set_write_deadband(params[CONF_WRITE_DEADBAND]))
 
     # Deadband parameters - optional

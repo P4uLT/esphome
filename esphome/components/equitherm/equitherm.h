@@ -51,7 +51,6 @@ class EquithermClimate : public climate::Climate, public Component {
   // Output parameters
   void set_min_flow_temp(float temp) { heating_curve_.set_min_flow_temp(temp); }
   void set_max_flow_temp(float temp) { heating_curve_.set_max_flow_temp(temp); }
-  void set_action_hysteresis(float hysteresis) { action_hysteresis_ = hysteresis; }
   void set_write_deadband(float deadband) { write_deadband_ = deadband; }
 
   // Rate limiting (asymmetric: different limits for rising vs falling)
@@ -191,8 +190,6 @@ class EquithermClimate : public climate::Climate, public Component {
   float pid_correction_{NAN};
   /// Fallback outdoor temperature when sensor fails (default 0°C - safe for winter)
   float fallback_outdoor_temp_{0.0f};
-  /// Hysteresis (°C) above min_flow_temp to decide HEATING vs IDLE action display
-  float action_hysteresis_{0.5f};
   /// Minimum setpoint change (°C) required to write to boiler output
   float write_deadband_{0.05f};
   /// Timeout for sensor staleness (ms) - treat as failed if no update for this long
