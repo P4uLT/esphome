@@ -87,6 +87,7 @@ class EquithermClimate : public climate::Climate, public Component {
   bool is_outdoor_sensor_fault() const { return outdoor_sensor_fault_; }
   bool is_indoor_sensor_fault() const { return indoor_sensor_fault_; }
   bool is_rate_limiting_active() const { return rate_limiting_active_; }
+  bool is_wws_active() const { return wws_active_; }
   /// Get fallback duration in seconds (NAN if not in fallback)
   float get_fallback_duration() const;
 
@@ -178,6 +179,8 @@ class EquithermClimate : public climate::Climate, public Component {
   float pid_adjusted_output_{NAN};
   /// Whether rate limiting is currently clamping the output
   bool rate_limiting_active_{false};
+  /// Whether warm weather shutdown is active (delta_t <= 0, no heating demand)
+  bool wws_active_{false};
   /// Timestamp of last rate-limited update for time-based limiting
   uint32_t last_rate_limit_time_{0};
   /// Flow setpoint (after rate limiting + PID, for diagnostics)

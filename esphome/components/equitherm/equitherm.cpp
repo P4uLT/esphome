@@ -304,6 +304,7 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
     this->heating_curve_output_ = NAN;
     this->pid_adjusted_output_ = NAN;
     this->rate_limiting_active_ = false;
+    this->wws_active_ = false;
     this->flow_setpoint_ = NAN;
     this->active_setpoint_ = NAN;
     // Reset rate limiter state to avoid issues on next HEAT transition
@@ -327,13 +328,23 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
     // Bypass curve and PID: use manual flow temperature directly
     t_flow = this->manual_flow_temp_->state;
     ESP_LOGD(TAG, "Manual preset active: using manual flow temp %.1f°C", t_flow);
+    this->wws_active_ = false;
     this->heating_curve_output_ = t_flow;
     this->pid_correction_ = 0.0f;
     this->pid_adjusted_output_ = t_flow;
 #endif
   } else {
     // Normal equitherm curve
+    // WWS decision is owned by the controller, not the curve calculator.
+    // This keeps HeatingCurve stateless and allows the formula to change independently.
+    this->wws_active_ = std::isnan(t_outdoor) || (this->target_temperature - t_outdoor) <= 0.0f;
+
     t_flow = heating_curve_.compute_flow_temperature(this->target_temperature, t_outdoor);
+
+    // Clamp to [min, max] only when there's positive heating demand
+    if (!this->wws_active_) {
+      t_flow = std::clamp(t_flow, heating_curve_.get_min_flow_temp(), heating_curve_.get_max_flow_temp());
+    }
 
     // Store raw curve output for diagnostics (before PID and rate limiting)
     this->heating_curve_output_ = t_flow;
@@ -409,20 +420,34 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
   this->prev_rate_limited_flow_ = t_flow;
   this->last_rate_limit_time_ = now;
 
-  // Set action based on whether we're actually calling for heat
-  bool calling_for_heat = t_flow > heating_curve_.get_min_flow_temp() + this->action_hysteresis_;
+  // Set action based on heating demand
+  // Manual mode always calls for heat. In normal mode, WWS = off (no demand).
+  // Any positive demand (delta_t > 0) = heating, even when clamped to minimum flow temp.
+  bool calling_for_heat = manual_active || !this->wws_active_;
   climate::ClimateAction new_action = calling_for_heat ? climate::CLIMATE_ACTION_HEATING : climate::CLIMATE_ACTION_IDLE;
 
   if (new_action != this->prev_action_) {
     if (new_action == climate::CLIMATE_ACTION_HEATING) {
       this->on_heating_start_callback_.call();
     } else if (this->prev_action_ == climate::CLIMATE_ACTION_HEATING) {
-      // Transitioned away from heating (to IDLE)
       this->on_heating_stop_callback_.call();
     }
     this->prev_action_ = new_action;
   }
   this->action = new_action;
+
+  // WWS: don't send a setpoint to the boiler (only in normal mode — manual mode bypasses curve)
+  if (!manual_active && this->wws_active_) {
+    this->rate_limiting_active_ = false;
+    this->flow_setpoint_ = 0.0f;
+    if (std::isnan(this->active_setpoint_) || this->active_setpoint_ != 0.0f) {
+      this->active_setpoint_ = 0.0f;
+      this->write_setpoint_off_();
+    }
+    this->publish_state();
+    this->state_callback_.call();
+    return;
+  }
 
   // Final guard: never write nan to output
   if (std::isnan(t_flow)) {
