@@ -132,6 +132,14 @@ void EquithermClimate::write_setpoint_(float temp_c) {
     return;
   }
 
+  // Curve returns 0.0f in WWS — that's a stop signal, not a temperature.
+  // Without this guard, clamp(0, min_flow_temp, max_flow_temp) would
+  // raise 0 to min_flow_temp and produce unwanted heat output.
+  if (temp_c == 0.0f) {
+    this->write_setpoint_off_();
+    return;
+  }
+
   // Defensive clamp (heating_curve also clamps, but this ensures safety)
   float clamped_flow = clamp(temp_c, heating_curve_.get_min_flow_temp(), heating_curve_.get_max_flow_temp());
 

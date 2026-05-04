@@ -13,13 +13,12 @@ float HeatingCurve::compute_flow_temperature(float t_target, float t_outdoor) {
   float delta_t = t_target - t_outdoor;
 
   // Warm weather shutdown: outdoor >= target — bypass formula entirely.
-  // Return raw target (below min_flow_temp when delta_t <= 0) so caller
-  // can distinguish WWS from low-demand-clamped-to-min.
+  // Return 0 to signal no heating demand.
   // Shift is only valid within the heating domain (delta_t > 0); applying it
   // at delta_t <= 0 would defeat warm weather shutdown and supply heat
   // unnecessarily. See: Viessmann, Buderus, EN 12831, Versatile Thermostat.
   if (delta_t <= 0.0f) {
-    return t_target;
+    return 0.0f;
   }
 
   // Industry-standard European heating curve:

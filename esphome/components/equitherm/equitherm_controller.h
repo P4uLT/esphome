@@ -20,7 +20,8 @@ class HeatingCurve {
   /// Compute supply temperature from target and outdoor temperatures
   /// @param t_target Room target temperature in °C
   /// @param t_outdoor Outdoor temperature in °C
-  /// @return Calculated supply temperature in °C, clamped to [min_flow_temp_, max_flow_temp_]
+  /// @return Calculated supply temperature in °C, clamped to [min_flow_temp_, max_flow_temp_].
+  ///         Returns 0.0f when delta_t <= 0 (warm weather shutdown).
   float compute_flow_temperature(float t_target, float t_outdoor);
 
   // Parameter setters (called from EquithermClimate)
