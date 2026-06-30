@@ -13,7 +13,6 @@ CONF_FLOW_SETPOINT = "flow_setpoint"
 CONF_MANUAL_FLOW_TEMP = "manual_flow_temp"
 CONF_HEAT_OUTPUT = "heat_output"
 CONF_FALLBACK_OUTDOOR_TEMP = "fallback_outdoor_temp"
-CONF_SENSOR_STALE_TIMEOUT = "sensor_stale_timeout"
 CONF_CONTROL_PARAMETERS = "control_parameters"
 CONF_OUTPUT_PARAMETERS = "output_parameters"
 CONF_DEADBAND_PARAMETERS = "deadband_parameters"
@@ -146,9 +145,6 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_MANUAL_FLOW_TEMP): cv.use_id(number.Number),
             cv.Optional(CONF_HEAT_OUTPUT): cv.use_id(output.FloatOutput),
             cv.Optional(CONF_FALLBACK_OUTDOOR_TEMP, default=0.0): cv.temperature,
-            cv.Optional(
-                CONF_SENSOR_STALE_TIMEOUT, default="10min"
-            ): cv.positive_time_period_milliseconds,
             cv.Required(CONF_CONTROL_PARAMETERS): CONTROL_PARAMETERS_SCHEMA,
             cv.Required(CONF_OUTPUT_PARAMETERS): OUTPUT_PARAMETERS_SCHEMA,
             cv.Optional(CONF_DEADBAND_PARAMETERS): DEADBAND_PARAMETERS_SCHEMA,
@@ -191,7 +187,6 @@ async def to_code(config):
 
     # Fallback outdoor temperature (sensor failure handling)
     cg.add(var.set_fallback_outdoor_temp(config[CONF_FALLBACK_OUTDOOR_TEMP]))
-    cg.add(var.set_sensor_stale_timeout(config[CONF_SENSOR_STALE_TIMEOUT]))
 
     # Control parameters (heating curve + PID)
     params = config[CONF_CONTROL_PARAMETERS]

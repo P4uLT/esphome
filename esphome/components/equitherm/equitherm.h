@@ -81,14 +81,9 @@ class EquithermClimate : public climate::Climate, public Component {
   // Fallback parameters (sensor failure handling)
   void set_fallback_outdoor_temp(float temp) { fallback_outdoor_temp_ = temp; }
   float get_fallback_outdoor_temp() const { return fallback_outdoor_temp_; }
-  void set_sensor_stale_timeout(uint32_t timeout_ms) { sensor_stale_timeout_ms_ = timeout_ms; }
-  uint32_t get_sensor_stale_timeout() const { return sensor_stale_timeout_ms_; }
-  bool is_outdoor_sensor_fault() const { return outdoor_sensor_fault_; }
-  bool is_indoor_sensor_fault() const { return indoor_sensor_fault_; }
+
   bool is_rate_limiting_active() const { return rate_limiting_active_; }
   bool is_wws_active() const { return wws_active_; }
-  /// Get fallback duration in seconds (NAN if not in fallback)
-  float get_fallback_duration() const;
 
   // State getters (for diagnostics)
   float get_heating_curve_output() const { return heating_curve_output_; }
@@ -192,22 +187,7 @@ class EquithermClimate : public climate::Climate, public Component {
   float fallback_outdoor_temp_{0.0f};
   /// Minimum setpoint change (°C) required to write to boiler output
   float write_deadband_{0.05f};
-  /// Timeout for sensor staleness (ms) - treat as failed if no update for this long
-  uint32_t sensor_stale_timeout_ms_{600000};  // Default: 10 minutes
-  /// Last known valid outdoor temperature for stale data window
-  float last_valid_outdoor_temp_{NAN};
-  /// Last known valid indoor temperature for display when sensor fails
-  float last_valid_indoor_temp_{NAN};
-  /// Whether outdoor sensor has failed (using fallback temperature)
-  bool outdoor_sensor_fault_{false};
-  /// Whether indoor sensor has failed (PID disabled, pure equitherm mode)
-  bool indoor_sensor_fault_{false};
-  /// Timestamp when fallback mode started (0 if not in fallback)
-  uint32_t fallback_start_time_{0};
-  /// Timestamp of last valid outdoor sensor reading
-  uint32_t last_valid_outdoor_time_{0};
-  /// Timestamp of last valid indoor sensor reading
-  uint32_t last_valid_indoor_time_{0};
+
   /// Callback for diagnostic sensors
   CallbackManager<void()> state_callback_;
   /// Previous climate action — used to detect heating start/stop transitions

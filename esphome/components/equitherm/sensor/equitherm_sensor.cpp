@@ -40,9 +40,6 @@ void EquithermSensor::update_from_parent_() {
     case EQUITHERM_SENSOR_TYPE_PID_DERIVATIVE:
       value = this->parent_->get_derivative_term();
       break;
-    case EQUITHERM_SENSOR_TYPE_FALLBACK_DURATION:
-      value = this->parent_->get_fallback_duration();
-      break;
     case EQUITHERM_SENSOR_TYPE_MIN_FLOW_TEMP:
       value = this->parent_->get_min_flow_temp();
       break;

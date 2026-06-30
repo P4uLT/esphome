@@ -17,20 +17,12 @@ static constexpr float OUTDOOR_SENSOR_MIN_VALID = -55.0f;
 static constexpr float OUTDOOR_SENSOR_MAX_VALID = 50.0f;
 
 void EquithermClimate::setup() {
-  // Register callback for indoor sensor updates
-  this->indoor_sensor_->add_on_state_callback([this](float state) {
-    // compute_and_apply_ will handle current_temperature assignment
-    // Don't set it here unconditionally - let validation logic handle it
-    this->compute_and_apply_();
-  });
+  // Register callback for indoor sensor updates — recompute on every update so the climate
+  // reflects the latest reading (the validity check itself lives in compute_and_apply_()).
+  this->indoor_sensor_->add_on_state_callback([this](float) { this->compute_and_apply_(); });
 
-  // Register callback for outdoor sensor updates
-  this->outdoor_sensor_->add_on_state_callback([this](float state) { this->compute_and_apply_(); });
-
-  // Get initial sensor values
-  if (this->indoor_sensor_->has_state()) {
-    this->current_temperature = this->indoor_sensor_->state;
-  }
+  // Register callback for outdoor sensor updates — same rationale.
+  this->outdoor_sensor_->add_on_state_callback([this](float) { this->compute_and_apply_(); });
 
   // Restore previous state or set defaults
   auto restore = this->restore_state_();
@@ -119,10 +111,9 @@ void EquithermClimate::dump_config() {
                 this->rate_limit_falling_);
 
   ESP_LOGCONFIG(TAG,
-                "  Fallback (sensor failure):\n"
-                "    fallback_outdoor_temp: %.1f°C\n"
-                "    sensor_stale_timeout: %.1f min",
-                this->fallback_outdoor_temp_, this->sensor_stale_timeout_ms_ / 60000.0f);
+                "  Fallback (invalid outdoor reading):\n"
+                "    fallback_outdoor_temp: %.1f°C",
+                this->fallback_outdoor_temp_);
 }
 
 void EquithermClimate::write_setpoint_(float temp_c) {
@@ -173,15 +164,6 @@ void EquithermClimate::write_setpoint_(float temp_c) {
   ESP_LOGW(TAG, "write_setpoint_: No output configured (flow_setpoint and heat_output are both null)");
 }
 
-float EquithermClimate::get_fallback_duration() const {
-  if (!this->outdoor_sensor_fault_ && !this->indoor_sensor_fault_) {
-    return NAN;
-  }
-  // Calculate elapsed time since fallback started
-  // Note: Unsigned subtraction handles millis() rollover correctly
-  return (millis() - this->fallback_start_time_) / 1000.0f;  // Return seconds
-}
-
 void EquithermClimate::write_setpoint_off_() {
   // For flow_setpoint_ (number): no action. There is no universal "off" value for a number —
   // min_value is still a heat request, not an off signal. Use on_heating_stop to do
@@ -206,91 +188,30 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
   }
 
   // --- OUTDOOR SENSOR HANDLING ---
+  // Straight read + fallback: if the outdoor reading is present, finite and in range use it;
+  // otherwise fall back to fallback_outdoor_temp_. No staleness timer, no fault flag.
   float t_outdoor;
   uint32_t now = millis();
-  bool outdoor_reading_valid = this->outdoor_sensor_->has_state() && !std::isnan(this->outdoor_sensor_->state) &&
-                               this->outdoor_sensor_->state >= OUTDOOR_SENSOR_MIN_VALID &&
-                               this->outdoor_sensor_->state <= OUTDOOR_SENSOR_MAX_VALID;
-
-  // Check for stale data (no update within timeout window)
-  // Note: Unsigned subtraction handles millis() rollover correctly
-  bool outdoor_stale = (now - this->last_valid_outdoor_time_) > this->sensor_stale_timeout_ms_;
-
-  bool outdoor_valid = outdoor_reading_valid && !outdoor_stale;
+  bool outdoor_valid = this->outdoor_sensor_->has_state() && !std::isnan(this->outdoor_sensor_->state) &&
+                       this->outdoor_sensor_->state >= OUTDOOR_SENSOR_MIN_VALID &&
+                       this->outdoor_sensor_->state <= OUTDOOR_SENSOR_MAX_VALID;
 
   if (outdoor_valid) {
     t_outdoor = this->outdoor_sensor_->state;
-    this->last_valid_outdoor_temp_ = t_outdoor;
-    this->last_valid_outdoor_time_ = now;
-    if (this->outdoor_sensor_fault_) {
-      ESP_LOGI(TAG, "Outdoor sensor recovered (%.1f°C), resuming normal operation", t_outdoor);
-      this->outdoor_sensor_fault_ = false;
-      // Reset rate limiter to avoid clamping from fallback-based calculation
-      this->prev_rate_limited_flow_ = NAN;
-      // Clear fallback start time if both sensors now valid
-      if (!this->indoor_sensor_fault_) {
-        this->fallback_start_time_ = 0;
-      }
-    }
   } else {
     t_outdoor = this->fallback_outdoor_temp_;
-    if (!this->outdoor_sensor_fault_) {
-      if (outdoor_stale) {
-        ESP_LOGW(TAG, "Outdoor sensor stale (no update for %.1f min), using fallback: %.1f°C",
-                 (now - this->last_valid_outdoor_time_) / 60000.0f, t_outdoor);
-      } else {
-        ESP_LOGW(TAG, "Outdoor sensor invalid, using fallback: %.1f°C", t_outdoor);
-      }
-      this->outdoor_sensor_fault_ = true;
-      // Reset rate limiter to avoid clamping from sensor-based calculation
-      this->prev_rate_limited_flow_ = NAN;
-      // Start tracking fallback duration if not already tracking
-      if (this->fallback_start_time_ == 0) {
-        this->fallback_start_time_ = now;
-      }
-    }
+    ESP_LOGD(TAG, "Outdoor sensor invalid, using fallback: %.1f°C", t_outdoor);
   }
 
   // --- INDOOR SENSOR HANDLING ---
-  float t_indoor;
-  bool indoor_reading_valid = this->indoor_sensor_->has_state() && !std::isnan(this->indoor_sensor_->state);
+  // Straight read: t_indoor is the current indoor state when present and finite, else NAN.
+  // No range check (the transient filter is gone). current_temperature is published only
+  // when the reading is not NAN so HA does not show a garbage value.
+  bool indoor_valid = this->indoor_sensor_->has_state() && !std::isnan(this->indoor_sensor_->state);
+  float t_indoor = indoor_valid ? this->indoor_sensor_->state : NAN;
 
-  // Check for stale data (no update within timeout window)
-  // Note: Unsigned subtraction handles millis() rollover correctly
-  bool indoor_stale = (now - this->last_valid_indoor_time_) > this->sensor_stale_timeout_ms_;
-
-  bool indoor_valid = indoor_reading_valid && !indoor_stale;
-
-  if (indoor_valid) {
-    t_indoor = this->indoor_sensor_->state;
-    this->current_temperature = t_indoor;  // Update display
-    this->last_valid_indoor_temp_ = t_indoor;
-    this->last_valid_indoor_time_ = now;
-    if (this->indoor_sensor_fault_) {
-      ESP_LOGI(TAG, "Indoor sensor recovered (%.1f°C), resuming PID control", t_indoor);
-      this->indoor_sensor_fault_ = false;
-      // Clear fallback start time if both sensors now valid
-      if (!this->outdoor_sensor_fault_) {
-        this->fallback_start_time_ = 0;
-      }
-    }
-  } else {
-    // Indoor sensor failed - continue with pure equitherm (PID disabled)
-    if (!this->indoor_sensor_fault_) {
-      if (indoor_stale) {
-        ESP_LOGW(TAG, "Indoor sensor stale (no update for %.1f min), switching to pure equitherm mode",
-                 (now - this->last_valid_indoor_time_) / 60000.0f);
-      } else {
-        ESP_LOGW(TAG, "Indoor sensor failed, switching to pure equitherm mode (PID disabled)");
-      }
-      // Start tracking fallback duration if not already tracking
-      if (this->fallback_start_time_ == 0) {
-        this->fallback_start_time_ = now;
-      }
-    }
-    this->indoor_sensor_fault_ = true;
-    // Keep last valid indoor temp for display (better than showing "unknown")
-    // current_temperature unchanged - shows stale but valid value
+  if (!std::isnan(t_indoor)) {
+    this->current_temperature = t_indoor;
   }
 
   float t_flow;
@@ -365,8 +286,8 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
       if (std::isnan(this->pid_correction_)) {
         this->pid_correction_ = 0.0f;
       }
-    } else if (!indoor_valid) {
-      // Indoor sensor failed - disable PID correction (pure equitherm mode)
+    } else {
+      // Indoor sensor invalid - disable PID correction (pure equitherm mode)
       this->pid_correction_ = 0.0f;
     }
 

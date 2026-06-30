@@ -8,15 +8,12 @@ from esphome.const import (
     CONF_ICON,
     CONF_TYPE,
     CONF_UNIT_OF_MEASUREMENT,
-    DEVICE_CLASS_DURATION,
     DEVICE_CLASS_TEMPERATURE,
     ENTITY_CATEGORY_DIAGNOSTIC,
     ENTITY_CATEGORY_NONE,
     ICON_THERMOMETER,
-    ICON_TIMER,
     STATE_CLASS_MEASUREMENT,
     UNIT_CELSIUS,
-    UNIT_SECOND,
 )
 
 from ..climate import EquithermClimate, equitherm_ns
@@ -41,7 +38,6 @@ EQUITHERM_SENSOR_TYPES = {
     "PID_PROPORTIONAL": EquithermSensorType.EQUITHERM_SENSOR_TYPE_PID_PROPORTIONAL,
     "PID_INTEGRAL": EquithermSensorType.EQUITHERM_SENSOR_TYPE_PID_INTEGRAL,
     "PID_DERIVATIVE": EquithermSensorType.EQUITHERM_SENSOR_TYPE_PID_DERIVATIVE,
-    "FALLBACK_DURATION": EquithermSensorType.EQUITHERM_SENSOR_TYPE_FALLBACK_DURATION,
     "MIN_FLOW_TEMP": EquithermSensorType.EQUITHERM_SENSOR_TYPE_MIN_FLOW_TEMP,
     "MAX_FLOW_TEMP": EquithermSensorType.EQUITHERM_SENSOR_TYPE_MAX_FLOW_TEMP,
 }
@@ -76,16 +72,6 @@ PID_DIAGNOSTIC_SENSORS = {
     "PID_DERIVATIVE": _temperature_sensor_config(),
 }
 
-# Diagnostic sensors for fallback mode
-FALLBACK_DIAGNOSTIC_SENSORS = {
-    "FALLBACK_DURATION": {
-        "unit": UNIT_SECOND,
-        "icon": ICON_TIMER,
-        "accuracy_decimals": 0,
-        "device_class": DEVICE_CLASS_DURATION,
-    },
-}
-
 # Diagnostic sensors for output parameters (static, set at compile time)
 OUTPUT_PARAMETER_SENSORS = {
     "MIN_FLOW_TEMP": {
@@ -102,7 +88,6 @@ OUTPUT_PARAMETER_SENSORS = {
 SENSOR_TYPE_CONFIGS = {
     **FLOW_TEMPERATURE_SENSORS,
     **PID_DIAGNOSTIC_SENSORS,
-    **FALLBACK_DIAGNOSTIC_SENSORS,
     **OUTPUT_PARAMETER_SENSORS,
 }
 
