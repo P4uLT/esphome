@@ -9,11 +9,82 @@ sensor:
     lambda: return 19.5;
     update_interval: 60s
 
+  # Diagnostic sensors (Phase G)
+  - platform: equitherm
+    climate_id: heating_controller
+    type: HEATING_CURVE_OUTPUT
+    name: "Heating Curve Output"
+    id: heating_curve_output_sensor
+
+  - platform: equitherm
+    climate_id: heating_controller
+    type: PID_ADJUSTED_OUTPUT
+    name: "PID Adjusted Output"
+    id: pid_adjusted_output_sensor
+
+  - platform: equitherm
+    climate_id: heating_controller
+    type: FLOW_SETPOINT
+    name: "Flow Setpoint"
+    id: flow_setpoint_sensor
+
+  - platform: equitherm
+    climate_id: heating_controller
+    type: ACTIVE_SETPOINT
+    name: "Active Setpoint"
+    id: active_setpoint_sensor
+
+  - platform: equitherm
+    climate_id: heating_controller
+    type: PID_CORRECTION
+    name: "PID Correction"
+    id: pid_correction_sensor
+
+# Diagnostic binary sensors
+binary_sensor:
+  - platform: equitherm
+    climate_id: heating_controller
+    rate_limiting_active:
+      name: "Rate Limiting Active"
+      id: rate_limiting_sensor
+    pid_active:
+      name: "PID Active"
+      id: pid_active_sensor
+
 output:
   - platform: slow_pwm
     pin: 4
     id: heat_output
     period: 15s
+
+# Runtime tuning numbers (Phase H)
+number:
+  - platform: equitherm
+    climate_id: heating_controller
+    heat_curve_coefficient:
+      name: "Heating Curve Coefficient"
+      id: hc_number
+    heat_curve_exponent:
+      name: "Heating Curve Exponent"
+      id: n_number
+    heat_curve_shift:
+      name: "Heating Curve Shift"
+      id: shift_number
+    pid_proportional_gain:
+      name: "PID Proportional Gain"
+      id: kp_number
+    pid_integral_gain:
+      name: "PID Integral Gain"
+      id: ki_number
+    pid_derivative_gain:
+      name: "PID Derivative Gain"
+      id: kd_number
+    rate_limit_rising:
+      name: "Rate Limit Rising"
+      id: rate_limit_rising_number
+    rate_limit_falling:
+      name: "Rate Limit Falling"
+      id: rate_limit_falling_number
 
 climate:
   - platform: equitherm
@@ -36,6 +107,8 @@ climate:
     output_parameters:
       min_flow_temp: 25.0
       max_flow_temp: 70.0
+      rate_limit_rising: 0.5
+      rate_limit_falling: 2.0
     deadband_parameters:
       threshold_high: 0.5
       threshold_low: -0.5
