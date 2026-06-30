@@ -38,6 +38,12 @@ PIDIntegralGainNumber = equitherm_ns.class_(
 PIDDerivativeGainNumber = equitherm_ns.class_(
     "PIDDerivativeGainNumber", number.Number, cg.Component
 )
+RateLimitRisingNumber = equitherm_ns.class_(
+    "RateLimitRisingNumber", number.Number, cg.Component
+)
+RateLimitFallingNumber = equitherm_ns.class_(
+    "RateLimitFallingNumber", number.Number, cg.Component
+)
 
 # Heating curve parameters
 CONF_HEAT_CURVE_COEFFICIENT = "heat_curve_coefficient"
@@ -48,6 +54,10 @@ CONF_HEAT_CURVE_SHIFT = "heat_curve_shift"
 CONF_PID_PROPORTIONAL_GAIN = "pid_proportional_gain"
 CONF_PID_INTEGRAL_GAIN = "pid_integral_gain"
 CONF_PID_DERIVATIVE_GAIN = "pid_derivative_gain"
+
+# Output rate limiting (asymmetric)
+CONF_RATE_LIMIT_RISING = "rate_limit_rising"
+CONF_RATE_LIMIT_FALLING = "rate_limit_falling"
 
 # =============================================================================
 # Icons (component-specific, not in esphome/const.py)
@@ -76,6 +86,9 @@ DEFAULT_SHIFT_MIN, DEFAULT_SHIFT_MAX, DEFAULT_SHIFT_STEP = -20.0, 20.0, 0.5
 DEFAULT_KP_MIN, DEFAULT_KP_MAX, DEFAULT_KP_STEP = 0.0, 20.0, 0.01
 DEFAULT_KI_MIN, DEFAULT_KI_MAX, DEFAULT_KI_STEP = 0.0, 10.0, 0.0001
 DEFAULT_KD_MIN, DEFAULT_KD_MAX, DEFAULT_KD_STEP = 0.0, 10.0, 0.01
+
+# Rate limit defaults
+DEFAULT_RATE_LIMIT_MIN, DEFAULT_RATE_LIMIT_MAX, DEFAULT_RATE_LIMIT_STEP = 0.0, 2.0, 0.1
 
 # =============================================================================
 # Validation
@@ -172,6 +185,21 @@ PID_GAINS_SCHEMA = cv.Schema(
     }
 )
 
+RATE_LIMIT_SCHEMA = cv.Schema(
+    {
+        cv.Optional(CONF_RATE_LIMIT_RISING): _number_schema(
+            RateLimitRisingNumber,
+            icon="mdi:thermometer-chevron-up",
+            unit="°C/min",
+        ),
+        cv.Optional(CONF_RATE_LIMIT_FALLING): _number_schema(
+            RateLimitFallingNumber,
+            icon="mdi:thermometer-chevron-down",
+            unit="°C/min",
+        ),
+    }
+)
+
 # =============================================================================
 # Main Configuration Schema
 # =============================================================================
@@ -185,6 +213,7 @@ CONFIG_SCHEMA = (
     )
     .extend(HEATING_CURVE_SCHEMA)
     .extend(PID_GAINS_SCHEMA)
+    .extend(RATE_LIMIT_SCHEMA)
 )
 
 # =============================================================================
@@ -251,6 +280,27 @@ async def _register_pid_numbers(config, parent_id):
         )
 
 
+async def _register_rate_limit_numbers(config, parent_id):
+    """Register rate limit number entities."""
+    if rate_limit_rising_config := config.get(CONF_RATE_LIMIT_RISING):
+        await _register_number(
+            rate_limit_rising_config,
+            parent_id,
+            DEFAULT_RATE_LIMIT_MIN,
+            DEFAULT_RATE_LIMIT_MAX,
+            DEFAULT_RATE_LIMIT_STEP,
+        )
+
+    if rate_limit_falling_config := config.get(CONF_RATE_LIMIT_FALLING):
+        await _register_number(
+            rate_limit_falling_config,
+            parent_id,
+            DEFAULT_RATE_LIMIT_MIN,
+            DEFAULT_RATE_LIMIT_MAX,
+            DEFAULT_RATE_LIMIT_STEP,
+        )
+
+
 # =============================================================================
 # Code Generation Entry Point
 # =============================================================================
@@ -262,3 +312,4 @@ async def to_code(config):
 
     await _register_heating_curve_numbers(config, parent_id)
     await _register_pid_numbers(config, parent_id)
+    await _register_rate_limit_numbers(config, parent_id)

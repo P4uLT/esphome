@@ -7,6 +7,9 @@ from esphome.const import CONF_ID, ENTITY_CATEGORY_DIAGNOSTIC
 from ..climate import EquithermClimate, equitherm_ns
 
 # Explicit binary sensor classes for each type
+RateLimitingBinarySensor = equitherm_ns.class_(
+    "RateLimitingBinarySensor", binary_sensor.BinarySensor, cg.Component
+)
 PidActiveBinarySensor = equitherm_ns.class_(
     "PidActiveBinarySensor", binary_sensor.BinarySensor, cg.Component
 )
@@ -15,6 +18,7 @@ WwsActiveBinarySensor = equitherm_ns.class_(
 )
 
 # Configuration keys for each binary sensor type
+CONF_RATE_LIMITING_ACTIVE = "rate_limiting_active"
 CONF_PID_ACTIVE = "pid_active"
 CONF_WWS_ACTIVE = "wws_active"
 
@@ -32,6 +36,9 @@ CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(CONF_ID): cv.declare_id(cg.EntityBase),
         cv.GenerateID(CONF_CLIMATE_ID): cv.use_id(EquithermClimate),
+        cv.Optional(CONF_RATE_LIMITING_ACTIVE): _status_sensor_schema(
+            RateLimitingBinarySensor, icon="mdi:speedometer-slow"
+        ),
         cv.Optional(CONF_PID_ACTIVE): _status_sensor_schema(
             PidActiveBinarySensor, icon="mdi:tune-vertical"
         ),
@@ -52,6 +59,9 @@ async def _register_binary_sensor(config, parent_id):
 
 async def to_code(config):
     parent_id = config[CONF_CLIMATE_ID]
+
+    if rate_limiting_config := config.get(CONF_RATE_LIMITING_ACTIVE):
+        await _register_binary_sensor(rate_limiting_config, parent_id)
 
     if pid_active_config := config.get(CONF_PID_ACTIVE):
         await _register_binary_sensor(pid_active_config, parent_id)

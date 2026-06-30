@@ -30,6 +30,8 @@ sensor:
 binary_sensor:
   - platform: equitherm
     climate_id: equitherm_climate
+    rate_limiting_active:
+      name: "Rate Limiting Active"
     pid_active:
       name: "PID Active"
     wws_active:

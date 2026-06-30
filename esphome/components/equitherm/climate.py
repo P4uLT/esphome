@@ -23,6 +23,8 @@ CONF_HEAT_CURVE_SHIFT = "heat_curve_shift"
 
 CONF_MIN_FLOW_TEMP = "min_flow_temp"
 CONF_MAX_FLOW_TEMP = "max_flow_temp"
+CONF_RATE_LIMIT_RISING = "rate_limit_rising"
+CONF_RATE_LIMIT_FALLING = "rate_limit_falling"
 
 # Output behavior parameters
 CONF_WRITE_DEADBAND = "write_deadband"
@@ -93,6 +95,12 @@ OUTPUT_PARAMETERS_SCHEMA = cv.All(
         {
             cv.Required(CONF_MIN_FLOW_TEMP): cv.temperature,
             cv.Required(CONF_MAX_FLOW_TEMP): cv.temperature,
+            cv.Optional(CONF_RATE_LIMIT_RISING, default=0.5): cv.float_range(
+                min=0.0, max=2.0
+            ),
+            cv.Optional(CONF_RATE_LIMIT_FALLING, default=1): cv.float_range(
+                min=0.0, max=2.0
+            ),
             cv.Optional(CONF_WRITE_DEADBAND, default="0.05°C"): cv.temperature_delta,
         }
     ),
@@ -192,6 +200,8 @@ async def to_code(config):
     params = config[CONF_OUTPUT_PARAMETERS]
     cg.add(var.set_min_flow_temp(params[CONF_MIN_FLOW_TEMP]))
     cg.add(var.set_max_flow_temp(params[CONF_MAX_FLOW_TEMP]))
+    cg.add(var.set_rate_limit_rising(params[CONF_RATE_LIMIT_RISING]))
+    cg.add(var.set_rate_limit_falling(params[CONF_RATE_LIMIT_FALLING]))
     cg.add(var.set_write_deadband(params[CONF_WRITE_DEADBAND]))
 
     # Deadband parameters - optional
