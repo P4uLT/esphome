@@ -12,6 +12,7 @@ CONF_INDOOR_SENSOR = "indoor_sensor"
 CONF_FLOW_SETPOINT = "flow_setpoint"
 CONF_MANUAL_FLOW_TEMP = "manual_flow_temp"
 CONF_HEAT_OUTPUT = "heat_output"
+CONF_FALLBACK_OUTDOOR_TEMP = "fallback_outdoor_temp"
 CONF_CONTROL_PARAMETERS = "control_parameters"
 CONF_OUTPUT_PARAMETERS = "output_parameters"
 CONF_DEADBAND_PARAMETERS = "deadband_parameters"
@@ -143,6 +144,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_FLOW_SETPOINT): cv.use_id(number.Number),
             cv.Optional(CONF_MANUAL_FLOW_TEMP): cv.use_id(number.Number),
             cv.Optional(CONF_HEAT_OUTPUT): cv.use_id(output.FloatOutput),
+            cv.Optional(CONF_FALLBACK_OUTDOOR_TEMP, default=0.0): cv.temperature,
             cv.Required(CONF_CONTROL_PARAMETERS): CONTROL_PARAMETERS_SCHEMA,
             cv.Required(CONF_OUTPUT_PARAMETERS): OUTPUT_PARAMETERS_SCHEMA,
             cv.Optional(CONF_DEADBAND_PARAMETERS): DEADBAND_PARAMETERS_SCHEMA,
@@ -182,6 +184,9 @@ async def to_code(config):
 
     # Climate defaults
     cg.add(var.set_default_target_temperature(config[CONF_DEFAULT_TARGET_TEMPERATURE]))
+
+    # Fallback outdoor temperature (sensor failure handling)
+    cg.add(var.set_fallback_outdoor_temp(config[CONF_FALLBACK_OUTDOOR_TEMP]))
 
     # Control parameters (heating curve + PID)
     params = config[CONF_CONTROL_PARAMETERS]

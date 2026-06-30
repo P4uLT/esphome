@@ -78,6 +78,10 @@ class EquithermClimate : public climate::Climate, public Component {
   void set_ki_multiplier(float mult) { pid_controller_.ki_multiplier_ = mult; }
   void set_kd_multiplier(float mult) { pid_controller_.kd_multiplier_ = mult; }
 
+  // Fallback parameters (sensor failure handling)
+  void set_fallback_outdoor_temp(float temp) { fallback_outdoor_temp_ = temp; }
+  float get_fallback_outdoor_temp() const { return fallback_outdoor_temp_; }
+
   bool is_rate_limiting_active() const { return rate_limiting_active_; }
   bool is_wws_active() const { return wws_active_; }
 
@@ -179,6 +183,8 @@ class EquithermClimate : public climate::Climate, public Component {
   float active_setpoint_{NAN};
   /// PID correction (for diagnostics)
   float pid_correction_{NAN};
+  /// Fallback outdoor temperature when sensor fails (default 0°C - safe for winter)
+  float fallback_outdoor_temp_{0.0f};
   /// Minimum setpoint change (°C) required to write to boiler output
   float write_deadband_{0.05f};
 

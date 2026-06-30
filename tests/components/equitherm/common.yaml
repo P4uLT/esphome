@@ -79,6 +79,9 @@ number:
     pid_derivative_gain:
       name: "PID Derivative Gain"
       id: kd_number
+    fallback_outdoor_temp:
+      name: "Fallback Outdoor Temperature"
+      id: fallback_outdoor_temp_number
     rate_limit_rising:
       name: "Rate Limit Rising"
       id: rate_limit_rising_number
@@ -93,6 +96,7 @@ climate:
     outdoor_sensor: outdoor_sensor
     indoor_sensor: indoor_sensor
     default_target_temperature: 20°C
+    fallback_outdoor_temp: 0.0
     heat_output: heat_output
     control_parameters:
       heat_curve_coefficient: 3.0

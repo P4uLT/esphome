@@ -11,6 +11,7 @@ from esphome.const import (
     CONF_STEP,
     DEVICE_CLASS_TEMPERATURE,
     ENTITY_CATEGORY_CONFIG,
+    ICON_THERMOMETER,
     UNIT_CELSIUS,
 )
 
@@ -38,6 +39,9 @@ PIDIntegralGainNumber = equitherm_ns.class_(
 PIDDerivativeGainNumber = equitherm_ns.class_(
     "PIDDerivativeGainNumber", number.Number, cg.Component
 )
+FallbackOutdoorTempNumber = equitherm_ns.class_(
+    "FallbackOutdoorTempNumber", number.Number, cg.Component
+)
 RateLimitRisingNumber = equitherm_ns.class_(
     "RateLimitRisingNumber", number.Number, cg.Component
 )
@@ -54,6 +58,9 @@ CONF_HEAT_CURVE_SHIFT = "heat_curve_shift"
 CONF_PID_PROPORTIONAL_GAIN = "pid_proportional_gain"
 CONF_PID_INTEGRAL_GAIN = "pid_integral_gain"
 CONF_PID_DERIVATIVE_GAIN = "pid_derivative_gain"
+
+# Fallback
+CONF_FALLBACK_OUTDOOR_TEMP = "fallback_outdoor_temp"
 
 # Output rate limiting (asymmetric)
 CONF_RATE_LIMIT_RISING = "rate_limit_rising"
@@ -86,6 +93,9 @@ DEFAULT_SHIFT_MIN, DEFAULT_SHIFT_MAX, DEFAULT_SHIFT_STEP = -20.0, 20.0, 0.5
 DEFAULT_KP_MIN, DEFAULT_KP_MAX, DEFAULT_KP_STEP = 0.0, 20.0, 0.01
 DEFAULT_KI_MIN, DEFAULT_KI_MAX, DEFAULT_KI_STEP = 0.0, 10.0, 0.0001
 DEFAULT_KD_MIN, DEFAULT_KD_MAX, DEFAULT_KD_STEP = 0.0, 10.0, 0.01
+
+# Fallback defaults (wide range for different climate strategies)
+DEFAULT_FALLBACK_MIN, DEFAULT_FALLBACK_MAX, DEFAULT_FALLBACK_STEP = -40.0, 30.0, 0.5
 
 # Rate limit defaults
 DEFAULT_RATE_LIMIT_MIN, DEFAULT_RATE_LIMIT_MAX, DEFAULT_RATE_LIMIT_STEP = 0.0, 2.0, 0.1
@@ -185,6 +195,17 @@ PID_GAINS_SCHEMA = cv.Schema(
     }
 )
 
+FALLBACK_SCHEMA = cv.Schema(
+    {
+        cv.Optional(CONF_FALLBACK_OUTDOOR_TEMP): _number_schema(
+            FallbackOutdoorTempNumber,
+            icon=ICON_THERMOMETER,
+            device_class=DEVICE_CLASS_TEMPERATURE,
+            unit=UNIT_CELSIUS,
+        ),
+    }
+)
+
 RATE_LIMIT_SCHEMA = cv.Schema(
     {
         cv.Optional(CONF_RATE_LIMIT_RISING): _number_schema(
@@ -213,6 +234,7 @@ CONFIG_SCHEMA = (
     )
     .extend(HEATING_CURVE_SCHEMA)
     .extend(PID_GAINS_SCHEMA)
+    .extend(FALLBACK_SCHEMA)
     .extend(RATE_LIMIT_SCHEMA)
 )
 
@@ -280,6 +302,18 @@ async def _register_pid_numbers(config, parent_id):
         )
 
 
+async def _register_fallback_numbers(config, parent_id):
+    """Register fallback number entities."""
+    if fallback_config := config.get(CONF_FALLBACK_OUTDOOR_TEMP):
+        await _register_number(
+            fallback_config,
+            parent_id,
+            DEFAULT_FALLBACK_MIN,
+            DEFAULT_FALLBACK_MAX,
+            DEFAULT_FALLBACK_STEP,
+        )
+
+
 async def _register_rate_limit_numbers(config, parent_id):
     """Register rate limit number entities."""
     if rate_limit_rising_config := config.get(CONF_RATE_LIMIT_RISING):
@@ -312,4 +346,5 @@ async def to_code(config):
 
     await _register_heating_curve_numbers(config, parent_id)
     await _register_pid_numbers(config, parent_id)
+    await _register_fallback_numbers(config, parent_id)
     await _register_rate_limit_numbers(config, parent_id)
