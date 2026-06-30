@@ -72,6 +72,10 @@ class EquithermClimate : public climate::Climate, public Component {
   void set_ki_multiplier(float mult) { pid_controller_.ki_multiplier_ = mult; }
   void set_kd_multiplier(float mult) { pid_controller_.kd_multiplier_ = mult; }
 
+  // Fallback parameters (sensor failure handling)
+  void set_fallback_outdoor_temp(float temp) { fallback_outdoor_temp_ = temp; }
+  float get_fallback_outdoor_temp() const { return fallback_outdoor_temp_; }
+
   bool is_wws_active() const { return wws_active_; }
 
   // State getters (for diagnostics)
@@ -144,18 +148,20 @@ class EquithermClimate : public climate::Climate, public Component {
   PIDController pid_controller_;
   /// Default target temperature when no state restored
   float default_target_temperature_{20.0f};
-  /// Raw heating curve output before PID (for diagnostics)
+  /// Raw heating curve output before rate limiting (for diagnostics)
   float heating_curve_output_{NAN};
-  /// Setpoint after PID (for diagnostics)
+  /// Setpoint after PID, before rate limiting (for diagnostics)
   float pid_adjusted_output_{NAN};
   /// Whether warm weather shutdown is active (delta_t <= 0, no heating demand)
   bool wws_active_{false};
-  /// Flow setpoint (after PID, for diagnostics)
+  /// Flow setpoint (after rate limiting + PID, for diagnostics)
   float flow_setpoint_{NAN};
   /// Last value actually written to boiler (confirmed active setpoint)
   float active_setpoint_{NAN};
   /// PID correction (for diagnostics)
   float pid_correction_{NAN};
+  /// Fallback outdoor temperature when sensor fails (default 0°C - safe for winter)
+  float fallback_outdoor_temp_{0.0f};
   /// Minimum setpoint change (°C) required to write to boiler output
   float write_deadband_{0.05f};
 

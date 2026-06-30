@@ -32,6 +32,7 @@ void EquithermClimate::setup() {
     this->mode = climate::CLIMATE_MODE_HEAT;
     this->target_temperature = this->default_target_temperature_;
     // On first boot, trigger initial calculation
+    // Note: We don't require both sensors to be ready - fallback will handle missing sensors
     this->compute_and_apply_();
   }
 }
@@ -106,6 +107,11 @@ void EquithermClimate::dump_config() {
                 "  Output Parameters:\n"
                 "    min_flow_temp: %.1f°C, max_flow_temp: %.1f°C",
                 heating_curve_.get_min_flow_temp(), heating_curve_.get_max_flow_temp());
+
+  ESP_LOGCONFIG(TAG,
+                "  Fallback (invalid outdoor reading):\n"
+                "    fallback_outdoor_temp: %.1f°C",
+                this->fallback_outdoor_temp_);
 }
 
 void EquithermClimate::write_setpoint_(float temp_c) {
@@ -178,12 +184,19 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
   }
 
   // --- OUTDOOR SENSOR HANDLING ---
-  // Straight read: if the outdoor reading is present, finite and in range use it; otherwise
-  // mark it invalid. With no configured substitute in core, an invalid outdoor sensor skips
-  // recalculation and holds the last setpoint (see guard below). No fault flag here.
+  // Straight read + fallback: if the outdoor reading is present, finite and in range use it;
+  // otherwise fall back to fallback_outdoor_temp_. No staleness timer, no fault flag.
+  float t_outdoor;
   bool outdoor_valid = this->outdoor_sensor_->has_state() && !std::isnan(this->outdoor_sensor_->state) &&
                        this->outdoor_sensor_->state >= OUTDOOR_SENSOR_MIN_VALID &&
                        this->outdoor_sensor_->state <= OUTDOOR_SENSOR_MAX_VALID;
+
+  if (outdoor_valid) {
+    t_outdoor = this->outdoor_sensor_->state;
+  } else {
+    t_outdoor = this->fallback_outdoor_temp_;
+    ESP_LOGD(TAG, "Outdoor sensor invalid, using fallback: %.1f°C", t_outdoor);
+  }
 
   // --- INDOOR SENSOR HANDLING ---
   // Straight read: t_indoor is the current indoor state when present and finite, else NAN.
@@ -195,6 +208,8 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
   if (!std::isnan(t_indoor)) {
     this->current_temperature = t_indoor;
   }
+
+  float t_flow;
 
   if (this->mode == climate::CLIMATE_MODE_OFF) {
     // Reset PID integral only on transition to OFF (not every update)
@@ -228,18 +243,6 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
                   !std::isnan(this->manual_flow_temp_->state);
 #endif
 
-  // Without a configured substitute, an invalid outdoor reading makes the curve incalculable.
-  // In normal (non-manual, non-OFF) mode we hold the last setpoint rather than drive the
-  // boiler from a garbage reading. Manual mode bypasses the curve entirely.
-  if (!manual_active && !outdoor_valid) {
-    ESP_LOGD(TAG, "Outdoor sensor invalid, holding last setpoint");
-    this->publish_state();
-    this->state_callback_.call();
-    return;
-  }
-
-  float t_flow;
-
   if (manual_active) {
 #ifdef USE_NUMBER
     // Bypass curve and PID: use manual flow temperature directly
@@ -251,11 +254,10 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
     this->pid_adjusted_output_ = t_flow;
 #endif
   } else {
-    // Normal equitherm curve (outdoor_valid is guaranteed true here)
-    float t_outdoor = this->outdoor_sensor_->state;
+    // Normal equitherm curve
     // WWS decision is owned by the controller, not the curve calculator.
     // This keeps HeatingCurve stateless and allows the formula to change independently.
-    this->wws_active_ = (this->target_temperature - t_outdoor) <= 0.0f;
+    this->wws_active_ = std::isnan(t_outdoor) || (this->target_temperature - t_outdoor) <= 0.0f;
 
     t_flow = heating_curve_.compute_flow_temperature(this->target_temperature, t_outdoor);
 
@@ -264,10 +266,11 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
       t_flow = std::clamp(t_flow, heating_curve_.get_min_flow_temp(), heating_curve_.get_max_flow_temp());
     }
 
-    // Store raw curve output for diagnostics (before PID)
+    // Store raw curve output for diagnostics (before PID and rate limiting)
     this->heating_curve_output_ = t_flow;
 
     // PID correction (ONLY when indoor sensor is valid)
+    // Calculate PID BEFORE rate limiting so the combined output is rate-limited together
     if (indoor_valid && update_pid) {
       this->pid_correction_ = this->pid_controller_.update(this->target_temperature, t_indoor);
       // Guard against nan from PID controller (can happen on first call)
@@ -279,10 +282,10 @@ void EquithermClimate::compute_and_apply_(bool update_pid) {
       this->pid_correction_ = 0.0f;
     }
 
-    // Apply PID correction to flow temperature
+    // Apply PID correction to flow temperature BEFORE rate limiting
     t_flow += this->pid_correction_;
 
-    // Store setpoint for diagnostics (curve + PID)
+    // Store setpoint for diagnostics (curve + PID, before rate limiting)
     this->pid_adjusted_output_ = t_flow;
   }
 
