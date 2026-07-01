@@ -30,22 +30,22 @@ sensor:
 binary_sensor:
   - platform: equitherm
     climate_id: equitherm_climate
+    outdoor_sensor_fault:
+      name: "Outdoor Sensor Fault"
+    indoor_sensor_fault:
+      name: "Indoor Sensor Fault"
+    indoor_sensor_coasting:
+      name: "Indoor Sensor Coasting"
     pid_active:
       name: "PID Active"
     wws_active:
       name: "WWS Active"
-output:
-  - platform: slow_pwm
-    pin: 4
-    id: heat_output
-    period: 15s
 climate:
   - platform: equitherm
     id: equitherm_climate
     outdoor_sensor: outdoor_temp
     indoor_sensor: indoor_temp
     default_target_temperature: 20
-    heat_output: heat_output
     control_parameters:
       heat_curve_coefficient: 1.4
       heat_curve_exponent: 1.3

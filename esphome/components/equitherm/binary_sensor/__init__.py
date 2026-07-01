@@ -2,11 +2,20 @@ import esphome.codegen as cg
 from esphome.components import binary_sensor
 from esphome.components.const import CONF_CLIMATE_ID
 import esphome.config_validation as cv
-from esphome.const import CONF_ID, ENTITY_CATEGORY_DIAGNOSTIC
+from esphome.const import CONF_ID, DEVICE_CLASS_PROBLEM, ENTITY_CATEGORY_DIAGNOSTIC
 
 from ..climate import EquithermClimate, equitherm_ns
 
 # Explicit binary sensor classes for each type
+OutdoorSensorFaultBinarySensor = equitherm_ns.class_(
+    "OutdoorSensorFaultBinarySensor", binary_sensor.BinarySensor, cg.Component
+)
+IndoorSensorFaultBinarySensor = equitherm_ns.class_(
+    "IndoorSensorFaultBinarySensor", binary_sensor.BinarySensor, cg.Component
+)
+IndoorSensorCoastingBinarySensor = equitherm_ns.class_(
+    "IndoorSensorCoastingBinarySensor", binary_sensor.BinarySensor, cg.Component
+)
 PidActiveBinarySensor = equitherm_ns.class_(
     "PidActiveBinarySensor", binary_sensor.BinarySensor, cg.Component
 )
@@ -15,8 +24,21 @@ WwsActiveBinarySensor = equitherm_ns.class_(
 )
 
 # Configuration keys for each binary sensor type
+CONF_OUTDOOR_SENSOR_FAULT = "outdoor_sensor_fault"
+CONF_INDOOR_SENSOR_FAULT = "indoor_sensor_fault"
+CONF_INDOOR_SENSOR_COASTING = "indoor_sensor_coasting"
 CONF_PID_ACTIVE = "pid_active"
 CONF_WWS_ACTIVE = "wws_active"
+
+
+def _problem_sensor_schema(binary_sensor_class, icon="mdi:alert-circle-outline"):
+    """Generate schema for problem-indicating binary sensors (fault sensors)."""
+    return binary_sensor.binary_sensor_schema(
+        binary_sensor_class,
+        device_class=DEVICE_CLASS_PROBLEM,
+        icon=icon,
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+    ).extend(cv.COMPONENT_SCHEMA)
 
 
 def _status_sensor_schema(binary_sensor_class, icon="mdi:alert-circle-outline"):
@@ -32,6 +54,15 @@ CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(CONF_ID): cv.declare_id(cg.EntityBase),
         cv.GenerateID(CONF_CLIMATE_ID): cv.use_id(EquithermClimate),
+        cv.Optional(CONF_OUTDOOR_SENSOR_FAULT): _problem_sensor_schema(
+            OutdoorSensorFaultBinarySensor
+        ),
+        cv.Optional(CONF_INDOOR_SENSOR_FAULT): _problem_sensor_schema(
+            IndoorSensorFaultBinarySensor
+        ),
+        cv.Optional(CONF_INDOOR_SENSOR_COASTING): _status_sensor_schema(
+            IndoorSensorCoastingBinarySensor, icon="mdi:thermometer-off"
+        ),
         cv.Optional(CONF_PID_ACTIVE): _status_sensor_schema(
             PidActiveBinarySensor, icon="mdi:tune-vertical"
         ),
@@ -52,6 +83,15 @@ async def _register_binary_sensor(config, parent_id):
 
 async def to_code(config):
     parent_id = config[CONF_CLIMATE_ID]
+
+    if outdoor_config := config.get(CONF_OUTDOOR_SENSOR_FAULT):
+        await _register_binary_sensor(outdoor_config, parent_id)
+
+    if indoor_config := config.get(CONF_INDOOR_SENSOR_FAULT):
+        await _register_binary_sensor(indoor_config, parent_id)
+
+    if coasting_config := config.get(CONF_INDOOR_SENSOR_COASTING):
+        await _register_binary_sensor(coasting_config, parent_id)
 
     if pid_active_config := config.get(CONF_PID_ACTIVE):
         await _register_binary_sensor(pid_active_config, parent_id)

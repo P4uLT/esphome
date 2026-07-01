@@ -9,11 +9,85 @@ sensor:
     lambda: return 19.5;
     update_interval: 60s
 
+  # Diagnostic sensors (Phase G)
+  - platform: equitherm
+    climate_id: heating_controller
+    type: HEATING_CURVE_OUTPUT
+    name: "Heating Curve Output"
+    id: heating_curve_output_sensor
+
+  - platform: equitherm
+    climate_id: heating_controller
+    type: PID_ADJUSTED_OUTPUT
+    name: "PID Adjusted Output"
+    id: pid_adjusted_output_sensor
+
+  - platform: equitherm
+    climate_id: heating_controller
+    type: FLOW_SETPOINT
+    name: "Flow Setpoint"
+    id: flow_setpoint_sensor
+
+  - platform: equitherm
+    climate_id: heating_controller
+    type: ACTIVE_SETPOINT
+    name: "Active Setpoint"
+    id: active_setpoint_sensor
+
+  - platform: equitherm
+    climate_id: heating_controller
+    type: PID_CORRECTION
+    name: "PID Correction"
+    id: pid_correction_sensor
+
+# Diagnostic binary sensors
+binary_sensor:
+  - platform: equitherm
+    climate_id: heating_controller
+    outdoor_sensor_fault:
+      name: "Outdoor Sensor Fault"
+      id: outdoor_sensor_fault_sensor
+    indoor_sensor_fault:
+      name: "Indoor Sensor Fault"
+      id: indoor_sensor_fault_sensor
+    indoor_sensor_coasting:
+      name: "Indoor Sensor Coasting"
+      id: indoor_sensor_coasting_sensor
+    pid_active:
+      name: "PID Active"
+      id: pid_active_sensor
+    wws_active:
+      name: "WWS Active"
+      id: wws_active_sensor
+
 output:
   - platform: slow_pwm
     pin: 4
     id: heat_output
     period: 15s
+
+# Runtime tuning numbers (Phase H)
+number:
+  - platform: equitherm
+    climate_id: heating_controller
+    heat_curve_coefficient:
+      name: "Heating Curve Coefficient"
+      id: hc_number
+    heat_curve_exponent:
+      name: "Heating Curve Exponent"
+      id: n_number
+    heat_curve_shift:
+      name: "Heating Curve Shift"
+      id: shift_number
+    pid_proportional_gain:
+      name: "PID Proportional Gain"
+      id: kp_number
+    pid_integral_gain:
+      name: "PID Integral Gain"
+      id: ki_number
+    pid_derivative_gain:
+      name: "PID Derivative Gain"
+      id: kd_number
 
 climate:
   - platform: equitherm
