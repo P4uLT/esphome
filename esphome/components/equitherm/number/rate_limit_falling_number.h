@@ -2,8 +2,7 @@
 
 #include "equitherm_number_base.h"
 
-namespace esphome {
-namespace equitherm {
+namespace esphome::equitherm {
 
 class EquithermClimate;
 
@@ -19,5 +18,4 @@ class RateLimitFallingNumber : public EquithermNumberBase, public Parented<Equit
   void control(float value) override;
 };
 
-}  // namespace equitherm
-}  // namespace esphome
+}  // namespace esphome::equitherm

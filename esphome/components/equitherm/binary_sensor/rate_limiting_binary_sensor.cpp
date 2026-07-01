@@ -2,8 +2,7 @@
 #include "esphome/core/log.h"
 #include "../equitherm.h"
 
-namespace esphome {
-namespace equitherm {
+namespace esphome::equitherm {
 
 static const char *const TAG = "rate_limiting_binary_sensor";
 
@@ -19,5 +18,4 @@ void RateLimitingBinarySensor::update_from_parent_() {
 
 void RateLimitingBinarySensor::dump_config() { LOG_BINARY_SENSOR("", "RateLimitingBinarySensor", this); }
 
-}  // namespace equitherm
-}  // namespace esphome
+}  // namespace esphome::equitherm
